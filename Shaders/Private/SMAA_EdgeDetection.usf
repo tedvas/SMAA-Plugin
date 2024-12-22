@@ -1,0 +1,52 @@
+float AdaptationFactor;
+#define SMAA_LOCAL_CONTRAST_ADAPTATION_FACTOR AdaptationFactor
+
+#if SMAA_PREDICATION
+Texture2D Predicate;
+
+float PredicationThreshold;
+float PredicationScale;
+float PredicationStrength;
+
+#define SMAA_PREDICATION_THRESHOLD PredicationThreshold
+#define SMAA_PREDICATION_SCALE PredicationScale
+#define SMAA_PREDICATION_STRENGTH PredicationStrength
+#endif
+
+#include "/SMAAPlugin/Private/SMAA_UE5.usf"
+
+Texture2D InputDepth;
+Texture2D InputSceneColor;
+RWTexture2D<float4> EdgesTexture;
+
+// Custom, modified version of EdgeDetection-PS and -VS
+[numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, THREADGROUP_SIZEZ)] 
+void EdgeDetectionCS(uint3 LocalThreadId : SV_GroupThreadID, uint3 WorkGroupId : SV_GroupID, uint3 DispatchThreadId : SV_DispatchThreadID)
+{
+    // Compute Texture Coord
+    float2 ViewportUV = (float2(DispatchThreadId.xy) + 0.5f) * ViewportMetrics.xy;
+    float2 Edges;
+
+    #if SMAA_EDMODE == 0
+        // Depth
+        Edges = SMAADepthEdgeDetectionCS(ViewportUV, InputDepth).xy;
+    #elif SMAA_EDMODE == 1 
+        // Luminance
+
+        #if SMAA_PREDICATION
+          Edges = SMAALumaEdgeDetectionCS(ViewportUV, InputSceneColor, Predicate).xy;
+        #else
+          Edges = SMAALumaEdgeDetectionCS(ViewportUV, InputSceneColor).xy;
+        #endif
+
+    #elif SMAA_EDMODE == 2 || SMAA_EDMODE > 2
+        // Colour, WorldNormal, GBufferB
+        #if SMAA_PREDICATION
+          Edges = SMAAColorEdgeDetectionCS(ViewportUV, InputSceneColor, Predicate).xy;
+        #else
+          Edges = SMAAColorEdgeDetectionCS(ViewportUV, InputSceneColor).xy;
+        #endif
+    #endif
+
+    EdgesTexture[DispatchThreadId.xy] = float4(Edges.x, Edges.y, 1, 1);
+}

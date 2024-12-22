@@ -1,0 +1,23 @@
+#include "/SMAAPlugin/Private/SMAA_UE5.usf"
+
+Texture2D AreaTexture;
+Texture2D SearchTexture;
+Texture2D InputEdges;
+RWTexture2D<float4> BlendTexture;
+float2 TemporalJitterPixels;
+float4 SubpixelWeights;
+
+// Custom, modified version
+[numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, THREADGROUP_SIZEZ)] 
+void BlendWeightingCS(uint3 LocalThreadId : SV_GroupThreadID, uint3 WorkGroupId : SV_GroupID, uint3 DispatchThreadId : SV_DispatchThreadID)
+{
+    // Compute Texture Coord
+    float2 ViewportUV = (float2(DispatchThreadId.xy) + 0.5f) * ViewportMetrics.xy;
+
+    BlendTexture[DispatchThreadId.xy] = SMAABlendingWeightCalculationCS(ViewportUV, InputEdges, AreaTexture, SearchTexture, SubpixelWeights);
+}
+
+
+
+
+

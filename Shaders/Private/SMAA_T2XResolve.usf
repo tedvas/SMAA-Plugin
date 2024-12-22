@@ -1,0 +1,33 @@
+float ReprojectionWeight;
+#define SMAA_REPROJECTION_WEIGHT_SCALE ReprojectionWeight
+
+float TemporalHistoryBias;
+#define SMAA_REPROJECTION_WEIGHT_BASE TemporalHistoryBias
+
+#include "/SMAAPlugin/Private/SMAA_UE5.usf"
+
+Texture2D CurrentSceneColour;
+Texture2D PastSceneColour;
+Texture2D VelocityTexture;
+Texture2D SceneDepth;
+RWTexture2D<float4> Resolved;
+
+// Custom, modified version
+[numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, THREADGROUP_SIZEZ)] void
+TemporalResolveCS(uint3 LocalThreadId
+                  : SV_GroupThreadID, uint3 WorkGroupId
+                  : SV_GroupID, uint3 DispatchThreadId
+                  : SV_DispatchThreadID) {
+
+    // Compute Texture Coord
+    float2 BufferUV = (float2(DispatchThreadId.xy) + 0.5f) * ViewportMetrics.xy;
+
+#if SMAA_REPROJECTION
+    Resolved[DispatchThreadId.xy] = SMAAResolveCS(
+        BufferUV, CurrentSceneColour, PastSceneColour, VelocityTexture, SceneDepth);
+#else
+    Resolved[DispatchThreadId.xy] =
+        SMAAResolveCS(BufferUV, CurrentSceneColour, PastSceneColour);
+#endif
+
+}

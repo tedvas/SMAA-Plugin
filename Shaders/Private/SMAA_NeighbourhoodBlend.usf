@@ -1,0 +1,29 @@
+#include "/SMAAPlugin/Private/SMAA_UE5.usf"
+
+Texture2D SceneColour;
+Texture2D InputBlend;
+Texture2D VelocityTexture;
+Texture2D SceneDepth;
+RWTexture2D<float4> FinalFrame;
+
+
+// Custom, modified version
+[numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, THREADGROUP_SIZEZ)] 
+void NeighbourhoodBlendingCS(uint3 LocalThreadId : SV_GroupThreadID, uint3 WorkGroupId : SV_GroupID, uint3 DispatchThreadId : SV_DispatchThreadID)
+{
+    // Compute Texture Coord
+    float2 ViewportUV = (float2(DispatchThreadId.xy) + 0.5f) * ViewportMetrics.xy;
+
+#if SMAA_REPROJECTION
+    FinalFrame[DispatchThreadId.xy] = SMAANeighborhoodBlendingCS(ViewportUV, SceneColour, InputBlend, VelocityTexture, SceneDepth);
+#else
+    FinalFrame[DispatchThreadId.xy] = SMAANeighborhoodBlendingCS(ViewportUV, SceneColour, InputBlend);
+#endif
+
+    
+}
+
+
+
+
+
