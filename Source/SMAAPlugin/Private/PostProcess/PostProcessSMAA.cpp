@@ -1,10 +1,20 @@
 #include "PostProcess/PostProcessSMAA.h"
 
 #include "PostProcess/PostProcessing.h"
+#include "PostProcess/PostProcessMaterialInputs.h"
 #include "Rendering/Texture2DResource.h"
 #include "ScenePrivate.h"
 #include "SMAASceneExtension.h"
+#include "SceneViewExtension.h"
 
+#include "SceneView.h"
+#include "ScreenPass.h"
+#include "CommonRenderResources.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "DynamicResolutionState.h"
+#include "FXRenderingUtils.h"
+
+PRAGMA_DISABLE_OPTIMIZATION
 DECLARE_GPU_STAT(SMAAPass)
 DECLARE_GPU_STAT_NAMED(SMAADispatch, TEXT("SMAA Dispatch"));
 
@@ -372,7 +382,7 @@ FVector4f SubpixelJitterWeights[2] = {
 	FVector4f(2, 2, 2, 0)
 };
 
-FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& View, const FSMAAInputs& Inputs, TSharedRef<struct FSMAAViewData> ViewData)
+FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& View, const FSMAAInputs& Inputs, const FPostProcessMaterialInputs& InOutInputs, TSharedRef<struct FSMAAViewData> ViewData)
 {
 	check(Inputs.SceneColor.IsValid());
 	check(Inputs.Quality != ESMAAPreset::MAX);
@@ -422,9 +432,19 @@ FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& Vie
 	}
 
 	FRHITexture* AreaTextureRHI = AreaResource->GetTexture2DRHI();
+	if (!AreaTextureRHI)
+	{
+		// Bail
+		return Inputs.SceneColor;
+	}
 	FRDGTextureRef AreaTexture = RegisterExternalTexture(GraphBuilder, AreaTextureRHI, TEXT("SMAA.AreaTexture"));
 
 	FRHITexture* SearchTextureRHI = SearchResource->GetTexture2DRHI();
+	if (!SearchTextureRHI)
+	{
+		// Bail
+		return Inputs.SceneColor;
+	}
 	FRDGTextureRef SearchTexture = RegisterExternalTexture(GraphBuilder, SearchTextureRHI, TEXT("SMAA.SearchTexture"));
 
 	// Create Textures for SMAA
@@ -455,11 +475,11 @@ FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& Vie
 	}
 
 	FRDGTextureRef SceneColor = Inputs.SceneColor.Texture;
-	FRDGTextureRef SceneDepth = Inputs.SceneDepth.Texture;
+	//FRDGTextureRef SceneDepth = Inputs.SceneDepth.Texture;
 	FRDGTextureRef Velocity = Inputs.SceneVelocity.Texture;
 
 	// Create Depth SRV Desc
-	FRDGTextureSRVDesc DepthSRVDesc = FRDGTextureSRVDesc::Create(SceneDepth);
+	//FRDGTextureSRVDesc DepthSRVDesc = FRDGTextureSRVDesc::Create(SceneDepth);
 	FRDGTextureSRVDesc AreaTextureSRVDesc = FRDGTextureSRVDesc::Create(AreaTexture);
 	FRDGTextureSRVDesc SearchTextureSRVDesc = FRDGTextureSRVDesc::Create(SearchTexture);
 	FRDGTextureSRVDesc SceneColourSRVDesc = FRDGTextureSRVDesc::Create(SceneColor);
@@ -471,8 +491,10 @@ FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& Vie
 
 	FRDGTextureSRVRef AreaTextureSRV = GraphBuilder.CreateSRV(AreaTextureSRVDesc);
 	FRDGTextureSRVRef SearchTextureSRV = GraphBuilder.CreateSRV(SearchTextureSRVDesc);
-	FRDGTextureSRVRef DepthSRV = GraphBuilder.CreateSRV(DepthSRVDesc);
+	FRDGTextureSRVRef DepthSRV = GraphBuilder.CreateSRV(InOutInputs.SceneTextures.SceneTextures->GetContents()->SceneDepthTexture);
 	FRDGTextureSRVRef ColourSRV = GraphBuilder.CreateSRV(SceneColourSRVDesc);
+
+	TRDGTextureAccess<ERHIAccess::SRVCompute> SceneDepth = InOutInputs.SceneTextures.SceneTextures->GetContents()->SceneDepthTexture;
 
 	// Permutations
 	ESMAAPreset Preset = Inputs.Quality;
@@ -496,9 +518,11 @@ FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& Vie
 			PredicateTexture = DepthSRV;
 			break;
 		case ESMAAPredicationTexture::WorldNormal:
+			PredicateTexture = GraphBuilder.CreateSRV(InOutInputs.SceneTextures.SceneTextures->GetContents()->GBufferATexture);
+			break;
 		case ESMAAPredicationTexture::MRS:
-
-			PredicateTexture = GraphBuilder.CreateSRV(Inputs.PredicateTexture.Texture);
+			PredicateTexture = GraphBuilder.CreateSRV(InOutInputs.SceneTextures.SceneTextures->GetContents()->GBufferBTexture);
+			//PredicateTexture = GraphBuilder.CreateSRV(Inputs.PredicateTexture.Texture);
 			break;
 		case ESMAAPredicationTexture::None:;
 		case ESMAAPredicationTexture::MAX:;
@@ -527,7 +551,8 @@ FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& Vie
 		}
 		else if (ESMAAEdgeDetectors::Normal == EdgeDetectorMode)
 		{
-			PassParameters->InputSceneColor = GraphBuilder.CreateSRV(Inputs.WorldNormal.Texture);
+			//PassParameters->InputSceneColor = GraphBuilder.CreateSRV(Inputs.WorldNormal.Texture);
+			PassParameters->InputSceneColor = GraphBuilder.CreateSRV(InOutInputs.SceneTextures.SceneTextures->GetContents()->GBufferATexture);
 		}
 
 		PassParameters->InputDepth = DepthSRV;
@@ -603,7 +628,7 @@ FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& Vie
 		PassParameters->SceneColour = GraphBuilder.CreateSRV(SceneColourSRVDesc);
 		PassParameters->InputBlend = GraphBuilder.CreateSRV(BlendSRVDesc);
 		PassParameters->SceneDepth = DepthSRV;
-		PassParameters->VelocityTexture = GraphBuilder.CreateSRV(VelocityDesc);
+		PassParameters->VelocityTexture = InOutInputs.GetInput(EPostProcessMaterialInput::Velocity).TextureSRV;
 		PassParameters->ViewportMetrics = RTMetrics;
 		PassParameters->View = View.ViewUniformBuffer;
 		PassParameters->NormalisedCornerRounding = Rounding;
@@ -869,3 +894,4 @@ FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& Vie
 //
 //	return Output;
 //}
+PRAGMA_ENABLE_OPTIMIZATION

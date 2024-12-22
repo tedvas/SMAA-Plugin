@@ -61,16 +61,16 @@ struct FSMAAInputs
 	FScreenPassTexture SceneColor;
 
 	// [Required] Depth Buffer.
-	FScreenPassTexture SceneDepth;
+	//FScreenPassTexture SceneDepth;
 
 	// [Required] Scene Velocity.
 	FScreenPassTexture SceneVelocity;
 
 	// [Optional] Predicate
-	FScreenPassTexture PredicateTexture;
+	//FScreenPassTexture PredicateTexture;
 
 
-	FScreenPassTexture WorldNormal;
+	//FScreenPassTexture WorldNormal;
 
 	// SMAA quality.
 	ESMAAPreset Quality = ESMAAPreset::MAX;
@@ -105,6 +105,6 @@ struct FSMAAInputs
 
 };
 
-FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& View, const FSMAAInputs& Inputs, TSharedRef<struct FSMAAViewData> ViewData);
+FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& View, const FSMAAInputs& Inputs, const struct FPostProcessMaterialInputs& InOutInputs, TSharedRef<struct FSMAAViewData> ViewData);
 
-FScreenPassTexture AddVisualizeSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& View, const FSMAAInputs& Inputs);
+//FScreenPassTexture AddVisualizeSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& View, const FSMAAInputs& Inputs);

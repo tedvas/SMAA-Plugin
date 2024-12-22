@@ -10,6 +10,7 @@
 
 #define LOCTEXT_NAMESPACE "FSMAAPluginModule"
 
+PRAGMA_DISABLE_OPTIMIZATION
 void FSMAAPluginModule::StartupModule()
 {
 	FString PluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("SMAAPlugin"))->GetBaseDir(), TEXT("Shaders"));
@@ -34,14 +35,15 @@ void FSMAAPluginModule::UpdateExtensions()
 	{
 		UTexture2D* AreaTexture = USMAADeveloperSettings::Get()->SMAAAreaTexture;
 		UTexture2D* SearchTexture = USMAADeveloperSettings::Get()->SMAASearchTexture;
-		const FTexture2DResource* AreaTextureResource = nullptr;
-		const FTexture2DResource* SearchTextureResource = nullptr;
+		FTexture2DResource* AreaTextureResource = nullptr;
+		FTexture2DResource* SearchTextureResource = nullptr;
 
 		if (ensure(AreaTexture))
 		{
-			const auto TextureResource = AreaTexture->GetResource();
+			//AreaTexture->UpdateResource();
+			const auto TextureResource = AreaTexture->CreateResource();
 
-			if (TextureResource)
+			if (ensure(TextureResource))
 			{
 				AreaTextureResource = TextureResource->GetTexture2DResource();
 			}
@@ -49,9 +51,10 @@ void FSMAAPluginModule::UpdateExtensions()
 
 		if (ensure(SearchTexture))
 		{
-			const auto TextureResource = SearchTexture->GetResource();
+			//SearchTexture->UpdateResource();
+			const auto TextureResource = SearchTexture->CreateResource();
 
-			if (TextureResource)
+			if (ensure(TextureResource))
 			{
 				SearchTextureResource = TextureResource->GetTexture2DResource();
 			}
@@ -60,6 +63,7 @@ void FSMAAPluginModule::UpdateExtensions()
 		SMAASceneExtension = FSceneViewExtensions::NewExtension<FSMAASceneExtension>(AreaTextureResource, SearchTextureResource);
 	}
 }
+PRAGMA_ENABLE_OPTIMIZATION
 
 #undef LOCTEXT_NAMESPACE
 	

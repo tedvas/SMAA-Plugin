@@ -12,12 +12,50 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "DynamicResolutionState.h"
 #include "FXRenderingUtils.h"
+#include "Rendering/Texture2DResource.h"
 
-FSMAASceneExtension::FSMAASceneExtension(const FAutoRegister& AutoReg, const FTexture2DResource* InSMAAAreaTexture, const FTexture2DResource* InSMAASearchTexture)
+#include "PostProcess/PostProcessSMAA.h"
+
+TAutoConsoleVariable<int32> CVarSMAAEnabled(
+	TEXT("r.SMAA"), 0,
+	TEXT(" 0 - off\n")
+	TEXT(" 1 - on"),
+	ECVF_RenderThreadSafe);
+
+FSMAASceneExtension::FSMAASceneExtension(const FAutoRegister& AutoReg, FTexture2DResource* InSMAAAreaTexture, FTexture2DResource* InSMAASearchTexture)
 	: FSceneViewExtensionBase(AutoReg)
 	, SMAAAreaTexture(InSMAAAreaTexture)
 	, SMAASearchTexture(InSMAASearchTexture)
 {
+	//check(SMAAAreaTexture)
+}
+
+void FSMAASceneExtension::SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView)
+{
+	GetOrCreateViewData(InView);
+}
+
+TSharedPtr<FSMAAViewData> FSMAASceneExtension::GetOrCreateViewData(const FSceneView& InView)
+{
+	if (InView.State == nullptr)
+	{
+		return nullptr;
+	}
+
+	const uint32 Index = InView.State->GetViewKey();
+	TSharedPtr<FSMAAViewData>& ViewData = ViewDataMap.FindOrAdd(Index);
+	if (!ViewData.IsValid())
+	{
+		ViewData = MakeShared<FSMAAViewData>();
+		ViewData->SMAAAreaTexture = SMAAAreaTexture;
+		ViewData->SMAASearchTexture = SMAASearchTexture;
+	}
+	return ViewData;
+}
+
+bool FSMAASceneExtension::IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const
+{
+	return CVarSMAAEnabled.GetValueOnAnyThread() == 1;
 }
 
 void FSMAASceneExtension::SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled)
@@ -32,18 +70,35 @@ FScreenPassTexture FSMAASceneExtension::PostProcessPass_RenderThread(FRDGBuilder
 {
 	InOutInputs.Validate();
 
-	//const FSceneViewFamily& ViewFamily = *View.Family;
+	SMAAAreaTexture->InitRHI(GetImmediateCommandList_ForRenderCommand());
+	SMAASearchTexture->InitRHI(GetImmediateCommandList_ForRenderCommand());
 
-	//// We need to make sure to take Windows and Scene scale into account.
-	//float ScreenPercentage = ViewFamily.SecondaryViewFraction;
+	auto& SceneTextureParameters = InOutInputs.SceneTextures.SceneTextures;
 
-	//if (ViewFamily.GetScreenPercentageInterface())
-	//{
-	//	DynamicRenderScaling::TMap<float> UpperBounds = ViewFamily.GetScreenPercentageInterface()->GetResolutionFractionsUpperBound();
-	//	ScreenPercentage *= UpperBounds[GDynamicPrimaryResolutionFraction];
-	//}
+	{
+		auto PredicateSource = GetPredicateSource();
 
-	//const FIntRect PrimaryViewRect = UE::FXRenderingUtils::GetRawViewRectUnsafe(View);
+		FSMAAInputs PassInputs;
+		//PassSequence.AcceptOverrideIfLastPass(EPass::SMAA, PassInputs.OverrideOutput);
+		PassInputs.SceneColor = FScreenPassTexture(InOutInputs.GetInput(EPostProcessMaterialInput::SceneColor));
+		PassInputs.SceneVelocity = FScreenPassTexture(InOutInputs.GetInput(EPostProcessMaterialInput::Velocity));
+		PassInputs.Quality = GetSMAAPreset();
+		PassInputs.EdgeMode = GetSMAAEdgeDetectors();
+		PassInputs.PredicationSource = PredicateSource;
+		PassInputs.MaxSearchSteps = GetSMAAMaxSearchSteps();
+		PassInputs.MaxDiagonalSearchSteps = GetSMAAMaxDiagonalSearchSteps();
+		PassInputs.CornerRounding = GetSMAACornerRounding();
+		PassInputs.AdaptationFactor = GetSMAAAdaptationFactor();
+		PassInputs.ReprojectionWeight = GetSMAAReprojectionWeight();
+		PassInputs.PredicationThreshold = GetSMAAPredicationThreshold();
+		PassInputs.PredicationScale = GetSMAAPredicationScale();
+		PassInputs.PredicationStrength = GetSMAAPredicationStrength();
+		PassInputs.TemporalHistoryBias = GetSMAATemporalHistoryBias();
+
+		check(View.bIsViewInfo);
+		auto SceneColorSlice = FScreenPassTextureSlice::CreateFromScreenPassTexture(GraphBuilder, AddSMAAPasses(GraphBuilder, (const FViewInfo&)View, PassInputs, InOutInputs, GetOrCreateViewData(View).ToSharedRef()));
+		return FScreenPassTexture(SceneColorSlice);
+	}
 
 	return FScreenPassTexture(InOutInputs.GetInput(EPostProcessMaterialInput::SceneColor));
 }

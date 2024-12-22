@@ -50,7 +50,7 @@ struct SMAAPLUGIN_API FSMAAViewData : public TSharedFromThis<FSMAAViewData, ESPM
 class SMAAPLUGIN_API FSMAASceneExtension : public FSceneViewExtensionBase
 {
 public:
-	FSMAASceneExtension(const FAutoRegister& AutoReg, const FTexture2DResource* SMAAAreaTexture, const FTexture2DResource* SMAASearchTexture);
+	FSMAASceneExtension(const FAutoRegister& AutoReg, FTexture2DResource* SMAAAreaTexture, FTexture2DResource* SMAASearchTexture);
 
 	/**
 	 * Called on game thread when creating the view family.
@@ -60,7 +60,7 @@ public:
 	/**
 	 * Called on game thread when creating the view.
 	 */
-	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) {};
+	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView);
 
 	/**
      * Called on game thread when view family is about to be rendered.
@@ -72,6 +72,9 @@ public:
 	*/
 	virtual void SubscribeToPostProcessingPass(EPostProcessingPass Pass, FAfterPassCallbackDelegateArray& InOutPassCallbacks, bool bIsPassEnabled);
 
+	TSharedPtr<FSMAAViewData> GetOrCreateViewData(const FSceneView& InView);
+
+	virtual bool IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const override;
 
 protected:
 	virtual FScreenPassTexture PostProcessPass_RenderThread(
@@ -82,8 +85,8 @@ protected:
 	);
 
 	// SMAA Specific Textures
-	const FTexture2DResource* SMAAAreaTexture;
-	const FTexture2DResource* SMAASearchTexture;
+	FTexture2DResource* SMAAAreaTexture;
+	FTexture2DResource* SMAASearchTexture;
 
 	TMap<uint32, TSharedPtr<FSMAAViewData>> ViewDataMap;
 };
