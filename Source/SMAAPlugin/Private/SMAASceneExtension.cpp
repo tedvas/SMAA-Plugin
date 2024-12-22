@@ -13,8 +13,10 @@
 #include "DynamicResolutionState.h"
 #include "FXRenderingUtils.h"
 
-FSMAASceneExtension::FSMAASceneExtension(const FAutoRegister& AutoReg, const FTexture2DResource* SMAAAreaTexture, const FTexture2DResource* SMAASearchTexture)
+FSMAASceneExtension::FSMAASceneExtension(const FAutoRegister& AutoReg, const FTexture2DResource* InSMAAAreaTexture, const FTexture2DResource* InSMAASearchTexture)
 	: FSceneViewExtensionBase(AutoReg)
+	, SMAAAreaTexture(InSMAAAreaTexture)
+	, SMAASearchTexture(InSMAASearchTexture)
 {
 }
 

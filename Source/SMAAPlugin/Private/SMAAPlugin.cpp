@@ -3,6 +3,7 @@
 #include "SMAAPlugin.h"
 
 #include "SMAASceneExtension.h"
+#include "SMAADeveloperSettings.h"
 #include "Interfaces/IPluginManager.h"
 #include "Misc/Paths.h"
 #include "ShaderCore.h"
@@ -16,6 +17,8 @@ void FSMAAPluginModule::StartupModule()
 
 	FCoreDelegates::OnPostEngineInit.AddLambda([this]()
 	{
+		USMAADeveloperSettings::Get()->LoadTextures();
+
 		UpdateExtensions();
 	});
 }
@@ -29,7 +32,32 @@ void FSMAAPluginModule::UpdateExtensions()
 {
 	if (!SMAASceneExtension.IsValid())
 	{
-		SMAASceneExtension = FSceneViewExtensions::NewExtension<FSMAASceneExtension>(nullptr, nullptr);
+		UTexture2D* AreaTexture = USMAADeveloperSettings::Get()->SMAAAreaTexture;
+		UTexture2D* SearchTexture = USMAADeveloperSettings::Get()->SMAASearchTexture;
+		const FTexture2DResource* AreaTextureResource = nullptr;
+		const FTexture2DResource* SearchTextureResource = nullptr;
+
+		if (ensure(AreaTexture))
+		{
+			const auto TextureResource = AreaTexture->GetResource();
+
+			if (TextureResource)
+			{
+				AreaTextureResource = TextureResource->GetTexture2DResource();
+			}
+		}
+
+		if (ensure(SearchTexture))
+		{
+			const auto TextureResource = SearchTexture->GetResource();
+
+			if (TextureResource)
+			{
+				SearchTextureResource = TextureResource->GetTexture2DResource();
+			}
+		}
+
+		SMAASceneExtension = FSceneViewExtensions::NewExtension<FSMAASceneExtension>(AreaTextureResource, SearchTextureResource);
 	}
 }
 
