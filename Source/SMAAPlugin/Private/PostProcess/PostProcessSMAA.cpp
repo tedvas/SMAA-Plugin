@@ -474,6 +474,7 @@ FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& Vie
 		bCameraCut = View.bCameraCut;
 	}
 
+	//InOutInputs.SceneTextures.SceneTextures->GetContents()->SceneColorTexture;
 	FRDGTextureRef SceneColor = Inputs.SceneColor.Texture;
 	//FRDGTextureRef SceneDepth = Inputs.SceneDepth.Texture;
 	FRDGTextureRef Velocity = Inputs.SceneVelocity.Texture;
@@ -593,7 +594,7 @@ FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& Vie
 		PassParameters->AreaTexture = AreaTextureSRV;
 		PassParameters->InputEdges = GraphBuilder.CreateSRV(EdgesSRVDesc);
 		PassParameters->TemporalJitterPixels = FVector2f(View.TemporalJitterPixels);
-		PassParameters->SubpixelWeights = SubpixelJitterWeights[View.TemporalJitterIndex & 1];
+		PassParameters->SubpixelWeights = SubpixelJitterWeights[ViewData->JitterIndex & 1];
 		PassParameters->SearchTexture = SearchTextureSRV;
 		PassParameters->ViewportMetrics = RTMetrics;
 		PassParameters->View = View.ViewUniformBuffer;
@@ -703,195 +704,208 @@ FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& Vie
 	return Output;
 }
 
-//FScreenPassTexture AddVisualizeSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& View, const FSMAAInputs& Inputs)
-//{
-//	check(Inputs.SceneColor.IsValid());
-//	check(Inputs.Quality != ESMAAPreset::MAX);
-//	check(Inputs.EdgeMode != ESMAAEdgeDetectors::MAX);
-//	RDG_EVENT_SCOPE(GraphBuilder, "SMAA T2x Visualizer");
-//
-//	FIntPoint InputExtents = Inputs.SceneColor.Texture->Desc.Extent; // View.ViewRect.Size();
-//	FIntRect InputRect = View.ViewRect;
-//	InputRect.Min = FIntPoint(0, 0);
-//	InputRect.Min = InputExtents;
-//	FIntPoint BackingSize = InputExtents;
-//	QuantizeSceneBufferSize(InputExtents, BackingSize);
-//
-//	FIntRect OutputRect = View.ViewRect;
-//	FIntPoint OutputExtents = View.ViewRect.Size();
-//
-//	FScreenPassTexture Output = Inputs.OverrideOutput;
-//
-//	if (!Output.IsValid())
-//	{
-//		FRDGTextureDesc WriteOutTextureDesc =
-//			FRDGTextureDesc::Create2D(BackingSize, PF_FloatRGBA, FClearValueBinding::Black,
-//				TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
-//
-//		Output = FScreenPassTexture(
-//			GraphBuilder.CreateTexture(WriteOutTextureDesc, TEXT("SMAA.Output")),
-//			OutputRect);
-//	}
-//
-//	FRHISamplerState* BilinearClampSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-//	FRHISamplerState* PointClampSampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-//
-//	auto RTMetrics = FVector4f(1.0 / BackingSize.X, 1.0 / BackingSize.Y, BackingSize.X, BackingSize.Y);
-//
-//	const FTexture2DResource* AreaResource = View.SMAAAreaTexture;
-//	if (!AreaResource)
-//	{
-//		// Bail
-//		return Inputs.SceneColor;
-//	}
-//
-//	const FTexture2DResource* SearchResource = View.SMAASearchTexture;
-//	if (!SearchResource)
-//	{
-//		// Bail
-//		return Inputs.SceneColor;
-//	}
-//
-//	FRHITexture* AreaTextureRHI = AreaResource->GetTexture2DRHI();
-//	FRDGTextureRef AreaTexture = RegisterExternalTexture(GraphBuilder, AreaTextureRHI, TEXT("SMAA.AreaTexture"));
-//
-//	FRHITexture* SearchTextureRHI = SearchResource->GetTexture2DRHI();
-//	FRDGTextureRef SearchTexture = RegisterExternalTexture(GraphBuilder, SearchTextureRHI, TEXT("SMAA.SearchTexture"));
-//
-//	// Create only Edges texture. We're writing straight out to output on blend
-//	FRDGTextureDesc EdgesTextureDesc =
-//		FRDGTextureDesc::Create2D(BackingSize, PF_FloatRGBA, FClearValueBinding::Black,
-//			TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
-//
-//	FRDGTextureRef EdgesTexture = GraphBuilder.CreateTexture(EdgesTextureDesc, TEXT("SMAA.EdgesTexture"));
-//
-//	FRDGTextureRef SceneColor = Inputs.SceneColor.Texture;
-//	FRDGTextureRef SceneDepth = Inputs.SceneDepth.Texture;
-//	FRDGTextureRef Velocity = Inputs.SceneVelocity.Texture;
-//
-//	// Create Depth SRV Desc
-//	FRDGTextureSRVDesc DepthSRVDesc = FRDGTextureSRVDesc::Create(SceneDepth);
-//	FRDGTextureSRVDesc AreaTextureSRVDesc = FRDGTextureSRVDesc::Create(AreaTexture);
-//	FRDGTextureSRVDesc SearchTextureSRVDesc = FRDGTextureSRVDesc::Create(SearchTexture);
-//	FRDGTextureSRVDesc SceneColourSRVDesc = FRDGTextureSRVDesc::Create(SceneColor);
-//	FRDGTextureSRVDesc EdgesSRVDesc = FRDGTextureSRVDesc::Create(EdgesTexture);
-//	FRDGTextureSRVDesc WriteOutTextureSRVDesc = FRDGTextureSRVDesc::Create(Output.Texture);
-//	FRDGTextureSRVDesc VelocityDesc = FRDGTextureSRVDesc::Create(Velocity);
-//
-//	FRDGTextureSRVRef AreaTextureSRV = GraphBuilder.CreateSRV(AreaTextureSRVDesc);
-//	FRDGTextureSRVRef SearchTextureSRV = GraphBuilder.CreateSRV(SearchTextureSRVDesc);
-//	FRDGTextureSRVRef DepthSRV = GraphBuilder.CreateSRV(DepthSRVDesc);
-//	FRDGTextureSRVRef ColourSRV = GraphBuilder.CreateSRV(SceneColourSRVDesc);
-//
-//	// Permutations
-//	ESMAAPreset Preset = Inputs.Quality;
-//	ESMAAEdgeDetectors EdgeDetectorMode = Inputs.EdgeMode;
-//	auto Rounding = Inputs.CornerRounding * 0.01f;
-//	auto MaxStepDiag = Inputs.MaxDiagonalSearchSteps;
-//	auto MaxStepOrth = Inputs.MaxSearchSteps;
-//	ESMAAPredicationTexture PredicateSource = Inputs.PredicationSource;
-//	auto AdaptationFactor = Inputs.AdaptationFactor;
-//	auto PredicationThreshold = Inputs.PredicationThreshold;
-//	auto PredicationScale = Inputs.PredicationScale;
-//	auto PredicationStrength = Inputs.PredicationStrength;
-//
-//	// Wanted Predicate Texture
-//	FRDGTextureSRVRef PredicateTexture = GraphBuilder.CreateSRV(GSystemTextures.GetWhiteDummy(GraphBuilder));
-//	switch (PredicateSource)
-//	{
-//		case ESMAAPredicationTexture::Depth:
-//			PredicateTexture = DepthSRV;
-//			break;
-//		case ESMAAPredicationTexture::WorldNormal:
-//		case ESMAAPredicationTexture::MRS:
-//
-//			PredicateTexture = GraphBuilder.CreateSRV(Inputs.PredicateTexture.Texture);
-//			break;
-//		case ESMAAPredicationTexture::None:;
-//		case ESMAAPredicationTexture::MAX:;
-//		default:;
-//	}
-//
-//	{
-//		FSMAAEdgeDetectionCS::FPermutationDomain PermutationVector;
-//
-//		PermutationVector.Set<FSMAAEdgeDetectionCS::FSMAAPresetConfigDim>(Preset);
-//		PermutationVector.Set<FSMAAEdgeDetectionCS::FSMAAEdgeModeConfigDim>(EdgeDetectorMode);
-//		PermutationVector.Set<FSMAAEdgeDetectionCS::FSMAAPredicateConfigDim>(ESMAAPredicationTexture::None != PredicateSource);
-//
-//		FSMAAEdgeDetectionCS::FParameters* PassParameters =
-//			GraphBuilder.AllocParameters<FSMAAEdgeDetectionCS::FParameters>();
-//		FRDGTextureUAVDesc OutputDesc(EdgesTexture);
-//
-//		PassParameters->DepthTexture = SceneDepth;
-//		PassParameters->PointTextureSampler = PointClampSampler;
-//		PassParameters->BilinearTextureSampler = BilinearClampSampler;
-//
-//		// Pass colour for Depth, Luma, and Colour
-//		if (EdgeDetectorMode < ESMAAEdgeDetectors::Normal)
-//		{
-//			PassParameters->InputSceneColor = ColourSRV;
-//		}
-//		else if (ESMAAEdgeDetectors::Normal == EdgeDetectorMode)
-//		{
-//			PassParameters->InputSceneColor = GraphBuilder.CreateSRV(Inputs.WorldNormal.Texture);
-//		}
-//
-//		PassParameters->InputDepth = DepthSRV;
-//		PassParameters->ViewportMetrics = RTMetrics;
-//		PassParameters->View = View.ViewUniformBuffer;
-//		PassParameters->NormalisedCornerRounding = Rounding;
-//		PassParameters->MaxSearchSteps = MaxStepOrth;
-//		PassParameters->MaxDiagonalSearchSteps = MaxStepDiag;
-//		PassParameters->Predicate = PredicateTexture;
-//		PassParameters->AdaptationFactor = AdaptationFactor;
-//		PassParameters->PredicationThreshold = PredicationThreshold;
-//		PassParameters->PredicationScale = PredicationScale;
-//		PassParameters->PredicationStrength = PredicationStrength;
-//		PassParameters->EdgesTexture = GraphBuilder.CreateUAV(OutputDesc);
-//
-//		TShaderMapRef<FSMAAEdgeDetectionCS> ComputeShaderSMAAED(View.ShaderMap, PermutationVector);
-//		FComputeShaderUtils::AddPass(
-//			GraphBuilder, RDG_EVENT_NAME("SMAA/EdgeDetection (CS)"), ComputeShaderSMAAED, PassParameters,
-//			FComputeShaderUtils::GetGroupCount(FIntVector(EdgesTexture->Desc.Extent.X, EdgesTexture->Desc.Extent.Y, 1),
-//				FIntVector(FSMAAEdgeDetectionCS::ThreadgroupSizeX,
-//					FSMAAEdgeDetectionCS::ThreadgroupSizeY,
-//					FSMAAEdgeDetectionCS::ThreadgroupSizeZ)));
-//	}
-//
-//	// Blend
-//	{
-//		FSMAABlendingWeightsCS::FPermutationDomain PermutationVector;
-//
-//		PermutationVector.Set<FSMAABlendingWeightsCS::FSMAAPresetConfigDim>(Preset);
-//
-//		FSMAABlendingWeightsCS::FParameters* PassParameters =
-//			GraphBuilder.AllocParameters<FSMAABlendingWeightsCS::FParameters>();
-//
-//		PassParameters->DepthTexture = SceneDepth;
-//		PassParameters->PointTextureSampler = TStaticSamplerState<SF_Point>::GetRHI();
-//		PassParameters->BilinearTextureSampler = TStaticSamplerState<SF_Bilinear>::GetRHI();
-//		PassParameters->AreaTexture = AreaTextureSRV;
-//		PassParameters->InputEdges = GraphBuilder.CreateSRV(EdgesSRVDesc);
-//		PassParameters->TemporalJitterPixels = FVector2f(View.TemporalJitterPixels);
-//		PassParameters->SubpixelWeights = SubpixelJitterWeights[View.TemporalJitterIndex & 1];
-//		PassParameters->SearchTexture = SearchTextureSRV;
-//		PassParameters->ViewportMetrics = RTMetrics;
-//		PassParameters->View = View.ViewUniformBuffer;
-//		PassParameters->NormalisedCornerRounding = Rounding;
-//		PassParameters->MaxSearchSteps = MaxStepOrth;
-//		PassParameters->MaxDiagonalSearchSteps = MaxStepDiag;
-//		PassParameters->BlendTexture = GraphBuilder.CreateUAV(Output.Texture);
-//
-//		TShaderMapRef<FSMAABlendingWeightsCS> ComputeShaderSMAABW(View.ShaderMap, PermutationVector);
-//		FComputeShaderUtils::AddPass(
-//			GraphBuilder, RDG_EVENT_NAME("SMAA/BlendWeights (CS)"), ComputeShaderSMAABW, PassParameters,
-//			FComputeShaderUtils::GetGroupCount(FIntVector(EdgesTexture->Desc.Extent.X, EdgesTexture->Desc.Extent.Y, 1),
-//				FIntVector(FSMAABlendingWeightsCS::ThreadgroupSizeX,
-//					FSMAABlendingWeightsCS::ThreadgroupSizeY,
-//					FSMAABlendingWeightsCS::ThreadgroupSizeZ)));
-//	}
-//
-//	return Output;
-//}
+FScreenPassTexture AddVisualizeSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& View, const FSMAAInputs& Inputs, const FPostProcessMaterialInputs& InOutInputs, TSharedRef<struct FSMAAViewData> ViewData)
+{
+	check(Inputs.SceneColor.IsValid());
+	check(Inputs.Quality != ESMAAPreset::MAX);
+	check(Inputs.EdgeMode != ESMAAEdgeDetectors::MAX);
+	RDG_EVENT_SCOPE(GraphBuilder, "SMAA T2x Visualizer");
+
+	FIntPoint InputExtents = Inputs.SceneColor.Texture->Desc.Extent; // View.ViewRect.Size();
+	FIntRect InputRect = View.ViewRect;
+	InputRect.Min = FIntPoint(0, 0);
+	InputRect.Min = InputExtents;
+	FIntPoint BackingSize = InputExtents;
+	QuantizeSceneBufferSize(InputExtents, BackingSize);
+
+	FIntRect OutputRect = View.ViewRect;
+	FIntPoint OutputExtents = View.ViewRect.Size();
+
+	FScreenPassTexture Output = Inputs.OverrideOutput;
+
+	if (!Output.IsValid())
+	{
+		FRDGTextureDesc WriteOutTextureDesc =
+			FRDGTextureDesc::Create2D(BackingSize, PF_FloatRGBA, FClearValueBinding::Black,
+				TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
+
+		Output = FScreenPassTexture(
+			GraphBuilder.CreateTexture(WriteOutTextureDesc, TEXT("SMAA.Output")),
+			OutputRect);
+	}
+
+	FRHISamplerState* BilinearClampSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
+	FRHISamplerState* PointClampSampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
+
+	auto RTMetrics = FVector4f(1.0 / BackingSize.X, 1.0 / BackingSize.Y, BackingSize.X, BackingSize.Y);
+
+	const FTexture2DResource* AreaResource = ViewData->SMAAAreaTexture;
+	if (!AreaResource)
+	{
+		// Bail
+		return Inputs.SceneColor;
+	}
+
+	const FTexture2DResource* SearchResource = ViewData->SMAASearchTexture;
+	if (!SearchResource)
+	{
+		// Bail
+		return Inputs.SceneColor;
+	}
+
+	FRHITexture* AreaTextureRHI = AreaResource->GetTexture2DRHI();
+	if (!AreaTextureRHI)
+	{
+		// Bail
+		return Inputs.SceneColor;
+	}
+	FRDGTextureRef AreaTexture = RegisterExternalTexture(GraphBuilder, AreaTextureRHI, TEXT("SMAA.AreaTexture"));
+
+	FRHITexture* SearchTextureRHI = SearchResource->GetTexture2DRHI();
+	if (!SearchTextureRHI)
+	{
+		// Bail
+		return Inputs.SceneColor;
+	}
+	FRDGTextureRef SearchTexture = RegisterExternalTexture(GraphBuilder, SearchTextureRHI, TEXT("SMAA.SearchTexture"));
+
+	// Create only Edges texture. We're writing straight out to output on blend
+	FRDGTextureDesc EdgesTextureDesc =
+		FRDGTextureDesc::Create2D(BackingSize, PF_FloatRGBA, FClearValueBinding::Black,
+			TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
+
+	FRDGTextureRef EdgesTexture = GraphBuilder.CreateTexture(EdgesTextureDesc, TEXT("SMAA.EdgesTexture"));
+
+	FRDGTextureRef SceneColor = Inputs.SceneColor.Texture;
+	//FRDGTextureRef SceneDepth = Inputs.SceneDepth.Texture;
+	FRDGTextureRef Velocity = Inputs.SceneVelocity.Texture;
+
+	// Create Depth SRV Desc
+	//FRDGTextureSRVDesc DepthSRVDesc = FRDGTextureSRVDesc::Create(SceneDepth);
+	FRDGTextureSRVDesc AreaTextureSRVDesc = FRDGTextureSRVDesc::Create(AreaTexture);
+	FRDGTextureSRVDesc SearchTextureSRVDesc = FRDGTextureSRVDesc::Create(SearchTexture);
+	FRDGTextureSRVDesc SceneColourSRVDesc = FRDGTextureSRVDesc::Create(SceneColor);
+	FRDGTextureSRVDesc EdgesSRVDesc = FRDGTextureSRVDesc::Create(EdgesTexture);
+	FRDGTextureSRVDesc WriteOutTextureSRVDesc = FRDGTextureSRVDesc::Create(Output.Texture);
+	FRDGTextureSRVDesc VelocityDesc = FRDGTextureSRVDesc::Create(Velocity);
+
+	FRDGTextureSRVRef AreaTextureSRV = GraphBuilder.CreateSRV(AreaTextureSRVDesc);
+	FRDGTextureSRVRef SearchTextureSRV = GraphBuilder.CreateSRV(SearchTextureSRVDesc);
+	FRDGTextureSRVRef DepthSRV = GraphBuilder.CreateSRV(InOutInputs.SceneTextures.SceneTextures->GetContents()->SceneDepthTexture);
+	FRDGTextureSRVRef ColourSRV = GraphBuilder.CreateSRV(SceneColourSRVDesc);
+
+	TRDGTextureAccess<ERHIAccess::SRVCompute> SceneDepth = InOutInputs.SceneTextures.SceneTextures->GetContents()->SceneDepthTexture;
+
+	// Permutations
+	ESMAAPreset Preset = Inputs.Quality;
+	ESMAAEdgeDetectors EdgeDetectorMode = Inputs.EdgeMode;
+	auto Rounding = Inputs.CornerRounding * 0.01f;
+	auto MaxStepDiag = Inputs.MaxDiagonalSearchSteps;
+	auto MaxStepOrth = Inputs.MaxSearchSteps;
+	ESMAAPredicationTexture PredicateSource = Inputs.PredicationSource;
+	auto AdaptationFactor = Inputs.AdaptationFactor;
+	auto PredicationThreshold = Inputs.PredicationThreshold;
+	auto PredicationScale = Inputs.PredicationScale;
+	auto PredicationStrength = Inputs.PredicationStrength;
+
+	// Wanted Predicate Texture
+	FRDGTextureSRVRef PredicateTexture = GraphBuilder.CreateSRV(GSystemTextures.GetWhiteDummy(GraphBuilder));
+	switch (PredicateSource)
+	{
+		case ESMAAPredicationTexture::Depth:
+			PredicateTexture = DepthSRV;
+			break;
+		case ESMAAPredicationTexture::WorldNormal:
+			PredicateTexture = GraphBuilder.CreateSRV(InOutInputs.SceneTextures.SceneTextures->GetContents()->GBufferATexture);
+			break;
+		case ESMAAPredicationTexture::MRS:
+			PredicateTexture = GraphBuilder.CreateSRV(InOutInputs.SceneTextures.SceneTextures->GetContents()->GBufferBTexture);
+			break;
+		case ESMAAPredicationTexture::None:;
+		case ESMAAPredicationTexture::MAX:;
+		default:;
+	}
+
+	{
+		FSMAAEdgeDetectionCS::FPermutationDomain PermutationVector;
+
+		PermutationVector.Set<FSMAAEdgeDetectionCS::FSMAAPresetConfigDim>(Preset);
+		PermutationVector.Set<FSMAAEdgeDetectionCS::FSMAAEdgeModeConfigDim>(EdgeDetectorMode);
+		PermutationVector.Set<FSMAAEdgeDetectionCS::FSMAAPredicateConfigDim>(ESMAAPredicationTexture::None != PredicateSource);
+
+		FSMAAEdgeDetectionCS::FParameters* PassParameters =
+			GraphBuilder.AllocParameters<FSMAAEdgeDetectionCS::FParameters>();
+		FRDGTextureUAVDesc OutputDesc(EdgesTexture);
+
+		PassParameters->DepthTexture = SceneDepth;
+		PassParameters->PointTextureSampler = PointClampSampler;
+		PassParameters->BilinearTextureSampler = BilinearClampSampler;
+
+		// Pass colour for Depth, Luma, and Colour
+		if (EdgeDetectorMode < ESMAAEdgeDetectors::Normal)
+		{
+			PassParameters->InputSceneColor = ColourSRV;
+		}
+		else if (ESMAAEdgeDetectors::Normal == EdgeDetectorMode)
+		{
+			PassParameters->InputSceneColor = GraphBuilder.CreateSRV(InOutInputs.SceneTextures.SceneTextures->GetContents()->GBufferATexture);
+		}
+
+		PassParameters->InputDepth = DepthSRV;
+		PassParameters->ViewportMetrics = RTMetrics;
+		PassParameters->View = View.ViewUniformBuffer;
+		PassParameters->NormalisedCornerRounding = Rounding;
+		PassParameters->MaxSearchSteps = MaxStepOrth;
+		PassParameters->MaxDiagonalSearchSteps = MaxStepDiag;
+		PassParameters->Predicate = PredicateTexture;
+		PassParameters->AdaptationFactor = AdaptationFactor;
+		PassParameters->PredicationThreshold = PredicationThreshold;
+		PassParameters->PredicationScale = PredicationScale;
+		PassParameters->PredicationStrength = PredicationStrength;
+		PassParameters->EdgesTexture = GraphBuilder.CreateUAV(OutputDesc);
+
+		TShaderMapRef<FSMAAEdgeDetectionCS> ComputeShaderSMAAED(View.ShaderMap, PermutationVector);
+		FComputeShaderUtils::AddPass(
+			GraphBuilder, RDG_EVENT_NAME("SMAA/EdgeDetection (CS)"), ComputeShaderSMAAED, PassParameters,
+			FComputeShaderUtils::GetGroupCount(FIntVector(EdgesTexture->Desc.Extent.X, EdgesTexture->Desc.Extent.Y, 1),
+				FIntVector(FSMAAEdgeDetectionCS::ThreadgroupSizeX,
+					FSMAAEdgeDetectionCS::ThreadgroupSizeY,
+					FSMAAEdgeDetectionCS::ThreadgroupSizeZ)));
+	}
+
+	// Blend
+	{
+		FSMAABlendingWeightsCS::FPermutationDomain PermutationVector;
+
+		PermutationVector.Set<FSMAABlendingWeightsCS::FSMAAPresetConfigDim>(Preset);
+
+		FSMAABlendingWeightsCS::FParameters* PassParameters =
+			GraphBuilder.AllocParameters<FSMAABlendingWeightsCS::FParameters>();
+
+		PassParameters->DepthTexture = SceneDepth;
+		PassParameters->PointTextureSampler = TStaticSamplerState<SF_Point>::GetRHI();
+		PassParameters->BilinearTextureSampler = TStaticSamplerState<SF_Bilinear>::GetRHI();
+		PassParameters->AreaTexture = AreaTextureSRV;
+		PassParameters->InputEdges = GraphBuilder.CreateSRV(EdgesSRVDesc);
+		PassParameters->TemporalJitterPixels = FVector2f(View.TemporalJitterPixels);
+		PassParameters->SubpixelWeights = SubpixelJitterWeights[View.TemporalJitterIndex & 1];
+		PassParameters->SearchTexture = SearchTextureSRV;
+		PassParameters->ViewportMetrics = RTMetrics;
+		PassParameters->View = View.ViewUniformBuffer;
+		PassParameters->NormalisedCornerRounding = Rounding;
+		PassParameters->MaxSearchSteps = MaxStepOrth;
+		PassParameters->MaxDiagonalSearchSteps = MaxStepDiag;
+		PassParameters->BlendTexture = GraphBuilder.CreateUAV(Output.Texture);
+
+		TShaderMapRef<FSMAABlendingWeightsCS> ComputeShaderSMAABW(View.ShaderMap, PermutationVector);
+		FComputeShaderUtils::AddPass(
+			GraphBuilder, RDG_EVENT_NAME("SMAA/BlendWeights (CS)"), ComputeShaderSMAABW, PassParameters,
+			FComputeShaderUtils::GetGroupCount(FIntVector(EdgesTexture->Desc.Extent.X, EdgesTexture->Desc.Extent.Y, 1),
+				FIntVector(FSMAABlendingWeightsCS::ThreadgroupSizeX,
+					FSMAABlendingWeightsCS::ThreadgroupSizeY,
+					FSMAABlendingWeightsCS::ThreadgroupSizeZ)));
+	}
+
+	return Output;
+}
 PRAGMA_ENABLE_OPTIMIZATION

@@ -107,4 +107,4 @@ struct FSMAAInputs
 
 FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& View, const FSMAAInputs& Inputs, const struct FPostProcessMaterialInputs& InOutInputs, TSharedRef<struct FSMAAViewData> ViewData);
 
-//FScreenPassTexture AddVisualizeSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& View, const FSMAAInputs& Inputs);
+FScreenPassTexture AddVisualizeSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& View, const FSMAAInputs& Inputs, const struct FPostProcessMaterialInputs& InOutInputs, TSharedRef<struct FSMAAViewData> ViewData);

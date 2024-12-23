@@ -39,6 +39,7 @@ struct SMAAPLUGIN_API FSMAAViewData : public TSharedFromThis<FSMAAViewData, ESPM
 	const FTexture2DResource* SMAAAreaTexture;
 	const FTexture2DResource* SMAASearchTexture;
 
+	int32 JitterIndex;
 	FSMAAHistory SMAAHistory;
 
 	virtual ~FSMAAViewData() {};
@@ -60,12 +61,14 @@ public:
 	/**
 	 * Called on game thread when creating the view.
 	 */
-	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView);
+	virtual void SetupView(FSceneViewFamily& InViewFamily, FSceneView& InView) override;
 
 	/**
      * Called on game thread when view family is about to be rendered.
      */
 	virtual void BeginRenderViewFamily(FSceneViewFamily& InViewFamily) {};
+
+	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
 
 	/**
 	* This will be called at the beginning of post processing to make sure that each view extension gets a chance to subscribe to an after pass event.
@@ -89,4 +92,6 @@ protected:
 	FTexture2DResource* SMAASearchTexture;
 
 	TMap<uint32, TSharedPtr<FSMAAViewData>> ViewDataMap;
+
+	void ApplyJitter(FViewInfo& View, FSceneViewState* ViewState, FIntRect ViewRect, TSharedRef<FSMAAViewData> ViewData);
 };
