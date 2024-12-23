@@ -17,6 +17,8 @@ class SMAAPLUGIN_API USMAADeveloperSettings : public UDeveloperSettings
 	GENERATED_BODY()
 	
 public:
+	USMAADeveloperSettings(const FObjectInitializer& ObjectInitializer);
+
 	/** Area Texture used by SMAA. */
 	UPROPERTY()
 	TObjectPtr<class UTexture2D> SMAAAreaTexture;

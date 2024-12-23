@@ -3,7 +3,13 @@
 
 #include "SMAADeveloperSettings.h"
 
-PRAGMA_DISABLE_OPTIMIZATION
+USMAADeveloperSettings::USMAADeveloperSettings(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	SMAAAreaTextureName = FSoftObjectPath("/SMAAPlugin/AreaTex.AreaTex");
+	SMAASearchTextureName = FSoftObjectPath("/SMAAPlugin/SearchTex.SearchTex");
+}
+
 void USMAADeveloperSettings::LoadTextures()
 {
 	if (SMAAAreaTexture == nullptr && !SMAAAreaTextureName.IsNull())
@@ -18,4 +24,3 @@ void USMAADeveloperSettings::LoadTextures()
 		SMAASearchTexture->AddToRoot();
 	}
 }
-PRAGMA_ENABLE_OPTIMIZATION
