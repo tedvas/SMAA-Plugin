@@ -14,7 +14,7 @@
 #include "DynamicResolutionState.h"
 #include "FXRenderingUtils.h"
 
-PRAGMA_DISABLE_OPTIMIZATION
+UE_ENABLE_OPTIMIZATION_SHIP
 DECLARE_GPU_STAT(SMAAPass)
 DECLARE_GPU_STAT_NAMED(SMAADispatch, TEXT("SMAA Dispatch"));
 
@@ -629,7 +629,7 @@ FScreenPassTexture AddSMAAPasses(FRDGBuilder& GraphBuilder, const FViewInfo& Vie
 		PassParameters->SceneColour = GraphBuilder.CreateSRV(SceneColourSRVDesc);
 		PassParameters->InputBlend = GraphBuilder.CreateSRV(BlendSRVDesc);
 		PassParameters->SceneDepth = DepthSRV;
-		PassParameters->VelocityTexture = InOutInputs.GetInput(EPostProcessMaterialInput::Velocity).TextureSRV;
+		//PassParameters->VelocityTexture = InOutInputs.GetInput(EPostProcessMaterialInput::Velocity).TextureSRV;
 		PassParameters->ViewportMetrics = RTMetrics;
 		PassParameters->View = View.ViewUniformBuffer;
 		PassParameters->NormalisedCornerRounding = Rounding;
@@ -908,4 +908,4 @@ FScreenPassTexture AddVisualizeSMAAPasses(FRDGBuilder& GraphBuilder, const FView
 
 	return Output;
 }
-PRAGMA_ENABLE_OPTIMIZATION
+UE_ENABLE_OPTIMIZATION_SHIP
