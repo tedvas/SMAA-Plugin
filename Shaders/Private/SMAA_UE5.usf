@@ -95,8 +95,9 @@ float4 ViewportMetrics;
 // Ensure Luma4 is defined. Placeholder implementation below:
 float3 Luma4(float3 rgb)
 {
-	return dot(rgb, float3(0.2126, 0.7152, 0.0722)); // Standard luminance calculation
+	return (Color.g * 2.0) + (Color.r + Color.b);
 }
+
 // FSMAAEdgeDetectionCS: Main edge detection shader
 void FSMAAEdgeDetectionCS(
 	Texture2D Texture,
