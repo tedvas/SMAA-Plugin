@@ -14,7 +14,6 @@
 #include "DynamicResolutionState.h"
 #include "FXRenderingUtils.h"
 
-UE_ENABLE_OPTIMIZATION_SHIP
 DECLARE_GPU_STAT(SMAAPass)
 DECLARE_GPU_STAT_NAMED(SMAADispatch, TEXT("SMAA Dispatch"));
 
@@ -149,6 +148,8 @@ public:
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), ThreadgroupSizeY);
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEZ"), ThreadgroupSizeZ);
 		OutEnvironment.SetDefine(TEXT("COMPUTE_SHADER"), 1);
+		OutEnvironment.SetDefine(TEXT("ENGINE_MAJOR_VERSION"), ENGINE_MAJOR_VERSION);
+		OutEnvironment.SetDefine(TEXT("ENGINE_MINOR_VERSION"), ENGINE_MINOR_VERSION);
 	}
 };
 IMPLEMENT_GLOBAL_SHADER(FSMAAEdgeDetectionCS, "/SMAAPlugin/Private/SMAA_EdgeDetection.usf", "EdgeDetectionCS",
@@ -200,6 +201,8 @@ public:
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), ThreadgroupSizeY);
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEZ"), ThreadgroupSizeZ);
 		OutEnvironment.SetDefine(TEXT("COMPUTE_SHADER"), 1);
+		OutEnvironment.SetDefine(TEXT("ENGINE_MAJOR_VERSION"), ENGINE_MAJOR_VERSION);
+		OutEnvironment.SetDefine(TEXT("ENGINE_MINOR_VERSION"), ENGINE_MINOR_VERSION);
 	}
 };
 IMPLEMENT_GLOBAL_SHADER(FSMAABlendingWeightsCS, "/SMAAPlugin/Private/SMAA_BlendWeighting.usf",
@@ -251,6 +254,8 @@ public:
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), ThreadgroupSizeY);
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEZ"), ThreadgroupSizeZ);
 		OutEnvironment.SetDefine(TEXT("COMPUTE_SHADER"), 1);
+		OutEnvironment.SetDefine(TEXT("ENGINE_MAJOR_VERSION"), ENGINE_MAJOR_VERSION);
+		OutEnvironment.SetDefine(TEXT("ENGINE_MINOR_VERSION"), ENGINE_MINOR_VERSION);
 	}
 };
 IMPLEMENT_GLOBAL_SHADER(FSMAANeighbourhoodBlendingCS, "/SMAAPlugin/Private/SMAA_NeighbourhoodBlend.usf",
@@ -306,6 +311,8 @@ public:
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), ThreadgroupSizeY);
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEZ"), ThreadgroupSizeZ);
 		OutEnvironment.SetDefine(TEXT("COMPUTE_SHADER"), 1);
+		OutEnvironment.SetDefine(TEXT("ENGINE_MAJOR_VERSION"), ENGINE_MAJOR_VERSION);
+		OutEnvironment.SetDefine(TEXT("ENGINE_MINOR_VERSION"), ENGINE_MINOR_VERSION);
 	}
 };
 
@@ -908,4 +915,3 @@ FScreenPassTexture AddVisualizeSMAAPasses(FRDGBuilder& GraphBuilder, const FView
 
 	return Output;
 }
-UE_ENABLE_OPTIMIZATION_SHIP

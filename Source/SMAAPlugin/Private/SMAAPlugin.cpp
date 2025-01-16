@@ -1,7 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "SMAAPlugin.h"
-
 #include "SMAASceneExtension.h"
 #include "SMAADeveloperSettings.h"
 #include "Interfaces/IPluginManager.h"
@@ -10,7 +9,6 @@
 
 #define LOCTEXT_NAMESPACE "FSMAAPluginModule"
 
-UE_ENABLE_OPTIMIZATION_SHIP
 void FSMAAPluginModule::StartupModule()
 {
 	FString PluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("SMAAPlugin"))->GetBaseDir(), TEXT("Shaders"));
@@ -42,22 +40,17 @@ void FSMAAPluginModule::UpdateExtensions()
 		{
 			//AreaTexture->UpdateResource();
 			const auto TextureResource = AreaTexture->CreateResource();
-
-			//AreaTextureResource = TextureResource->GetTexture2DResource();
 		}
 
 		if (ensure(SearchTexture))
 		{
 			//SearchTexture->UpdateResource();
 			const auto TextureResource = SearchTexture->CreateResource();
-
-			//SearchTextureResource = TextureResource->GetTexture2DResource();
 		}
 
 		SMAASceneExtension = FSceneViewExtensions::NewExtension<FSMAASceneExtension>(AreaTextureResource, SearchTextureResource);
 	}
 }
-UE_ENABLE_OPTIMIZATION_SHIP
 
 #undef LOCTEXT_NAMESPACE
 	
