@@ -14,7 +14,7 @@
 #include "DynamicResolutionState.h"
 #include "FXRenderingUtils.h"
 
-DECLARE_GPU_STAT(SMAAPass)
+DECLARE_GPU_STAT(SMAAPass);
 DECLARE_GPU_STAT_NAMED(SMAADispatch, TEXT("SMAA Dispatch"));
 
 TAutoConsoleVariable<int32> CVarSMAAQuality(
